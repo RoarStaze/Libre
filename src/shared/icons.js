@@ -9,6 +9,7 @@ const icons = {
   library:'<path d="M4 5h5v15H4zM10 4h5v16h-5zM16 6h4v14h-4z"/>',
   arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',
   close:'<path d="M6 6l12 12M18 6 6 18"/>',
+  edit:'<path d="M4 20h4l11-11a2.8 2.8 0 0 0-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/>',
   bookmark:'<path d="M6 4h12v17l-6-4-6 4z"/>',
   share:'<circle cx="18" cy="5" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="18" cy="19" r="2"/><path d="m8 11 8-5M8 13l8 5"/>',
   more:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',

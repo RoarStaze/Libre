@@ -6,6 +6,12 @@ const views={
   collections:{label:'Collections',description:'Your curated research sets and knowledge groupings.'}
 };
 
+function locationView(){
+  if(typeof location==='undefined') return null;
+  const query=String(location.hash||'').split('?')[1]||'';
+  return new URLSearchParams(query).get('view');
+}
+
 function objectCards(items){
   return items.length?`<div class="library-grid">${items.map((object)=>`<article class="library-item"><small class="library-object-type">${escapeHTML(object.type.replaceAll('_',' '))}</small><h3>${escapeHTML(object.title)}</h3><p>${escapeHTML(object.summary||object.subtitle||object.evidenceState||'Saved knowledge object')}</p><button class="quiet-button" data-open-object="${object.id}">Open</button></article>`).join('')}</div>`:`<div class="empty-state"><div><h2>Nothing here yet</h2><p>As you explore Libre, this view becomes a useful memory layer instead of another feed.</p><button class="primary-button" data-route="/">Explore The Stream</button></div></div>`;
 }
@@ -15,8 +21,9 @@ function collectionCards(state){
   return collections.length?`<div class="library-grid">${collections.map((collection)=>`<article class="library-item"><small class="library-object-type">${escapeHTML(collection.visibility)}</small><h3>${escapeHTML(collection.title)}</h3><p>${collection.items.length} connected object${collection.items.length===1?'':'s'}</p></article>`).join('')}</div>`:`<div class="empty-state"><div><h2>No collections yet</h2><p>Collections let you build curated research sets from any connected Knowledge Object.</p><button class="primary-button" data-new-collection>New collection</button></div></div>`;
 }
 
-export function libraryMarkup({ graph, state, view='saved' }) {
-  const active=views[view]?view:'saved';
+export function libraryMarkup({ graph, state, view=null }) {
+  const requested=view||locationView()||'saved';
+  const active=views[requested]?requested:'saved';
   const ids=active==='history'?[...(state.library.history||[])]:[...(state.library.saved||[])];
   const items=[...new Set(ids)].map((id)=>graph.objects.find((object)=>object.id===id)).filter(Boolean);
   const meta=views[active];

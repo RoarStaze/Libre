@@ -1,6 +1,8 @@
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const coarsePointer = window.matchMedia('(pointer: coarse)');
-const MAX_TILT = 5.5;
+// Keep the card physically responsive without rotating live text enough to
+// trigger visibly soft Chromium rasterization on common Windows displays.
+const MAX_TILT = 2.25;
 
 function resetCard(card) {
   card.removeAttribute('data-depth-active');

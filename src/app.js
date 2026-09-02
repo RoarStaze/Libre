@@ -1,5 +1,6 @@
 import { createRepository } from './data/repository.js';
 import { createSelectors } from './data/selectors.js';
+import { discoverSourcesForDraft } from './domain/source-discovery.js';
 import { initRouter, setRouterHandler, parseRoute, navigate, back, rememberScroll, consumeRestoreScroll } from './router.js';
 import { qs, qsa, escapeHTML, setHTML, delegate, avatarMarkup } from './shared/dom.js';
 import { icon } from './shared/icons.js';
@@ -122,7 +123,7 @@ function closeTransientOverlay() {
 }
 
 function toast(message) {
-  const node=document.createElement('div'); node.className='toast'; node.textContent=message; toastRoot.append(node); setTimeout(()=>node.remove(),2600);
+  const node=document.createElement('div'); node.className='toast'; node.textContent=message; toastRoot.append(node); setTimeout(()=>node.remove(),3200);
 }
 
 function openAuth(mode='login'){ overlayMode='auth'; setHTML(overlayRoot,authModalMarkup(mode)); document.body.style.overflow='hidden'; }
@@ -130,8 +131,12 @@ function openRabbit(id){ const {selectors}=graphContext(); overlayMode='rabbit';
 
 function objectCreateModal(type,draftId) {
   overlayMode='studio-object';
+  const normalizedType=type==='custom'?'claim':type;
   const label=type==='custom'?'Knowledge object':type.replaceAll('_',' ');
-  setHTML(overlayRoot,`<div class="modal-backdrop"><section class="modal"><h2>Add ${escapeHTML(label)}</h2><form data-studio-object-form data-type="${escapeHTML(type==='custom'?'claim':type)}" data-draft-id="${draftId}"><div class="field"><label>Title / canonical text</label><textarea name="title" required autofocus></textarea></div><div class="field"><label>Evidence classification</label><select name="evidenceState"><option>unverified</option><option>established</option><option>supported</option><option>preliminary</option><option>disputed</option><option>theory</option><option>speculation</option></select></div><div class="modal-actions"><button type="button" class="quiet-button" data-close-transient>Cancel</button><button class="primary-button" type="submit">Add to workspace</button></div></form></section></div>`); document.body.style.overflow='hidden';
+  const automaticNote=normalizedType==='claim'
+    ? '<div class="auto-evidence-notice"><strong>Libre assesses this automatically.</strong><span>When you publish, Libre searches independent source indexes, adds relevant sources, checks support and counterevidence, then assigns the evidence classification. You cannot choose the label yourself.</span></div>'
+    : '<div class="auto-evidence-notice"><strong>Sources are optional for creators.</strong><span>Libre will search for relevant sources automatically when the Knowledge Space is published.</span></div>';
+  setHTML(overlayRoot,`<div class="modal-backdrop"><section class="modal"><h2>Add ${escapeHTML(label)}</h2><form data-studio-object-form data-type="${escapeHTML(normalizedType)}" data-draft-id="${draftId}"><div class="field"><label>Title / canonical text</label><textarea name="title" required autofocus></textarea></div>${automaticNote}<div class="modal-actions"><button type="button" class="quiet-button" data-close-transient>Cancel</button><button class="primary-button" type="submit">Add to workspace</button></div></form></section></div>`); document.body.style.overflow='hidden';
 }
 
 function connectModal(draftId,fromId){ const draft=repository.getDraft(draftId); const others=draft.objects.filter((o)=>o.id!==fromId); overlayMode='connect'; setHTML(overlayRoot,`<div class="modal-backdrop"><section class="modal"><h2>Connect objects</h2><form data-connect-form data-draft-id="${draftId}" data-from-id="${fromId}"><div class="field"><label>Relationship</label><select name="type"><option value="supports">supports</option><option value="contradicts">contradicts</option><option value="derived_from">derived from</option><option value="explains">explains</option><option value="questions">questions</option><option value="cites">cites</option><option value="related_to">related to</option></select></div><div class="field"><label>To object</label><select name="toId">${others.map((o)=>`<option value="${o.id}">${escapeHTML(o.title)}</option>`).join('')}</select></div><div class="modal-actions"><button type="button" class="quiet-button" data-close-transient>Cancel</button><button class="primary-button" type="submit">Connect</button></div></form></section></div>`); document.body.style.overflow='hidden'; }
@@ -162,7 +167,7 @@ delegate(document,'click','[data-vote-comment]',(_,target)=>{repository.voteComm
 delegate(document,'click','[data-report-comment]',(_,target)=>{repository.reportContent({targetType:'comment',targetId:target.dataset.reportComment,reason:'User-submitted report'});toast('Report added to moderation queue.');});
 delegate(document,'click','[data-reply-comment]',(_,target)=>{pendingReply=target.dataset.replyComment;const form=qs('[data-comment-form]');if(form){form.querySelector('textarea').focus();form.querySelector('textarea').placeholder='Reply to this comment…';}});
 delegate(document,'click','[data-comment-scope-type]',(_,target)=>{activeDiscussionScope={type:target.dataset.commentScopeType,id:target.dataset.commentScopeId}; overlayMode='scope-discussion'; toast(`Discussion is anchored to this ${activeDiscussionScope.type}. Open the Discussion lens to continue.`); transitionNavigate(`/space/${route.params.id}/discussion`,{replace:true});});
-delegate(document,'click','[data-claim-action]',(_,target)=>toast(`${target.dataset.claimAction==='support'?'Supporting evidence':'Counterevidence'} attachment UI is wired to the knowledge model; source ingestion becomes server-backed when Supabase is connected.`));
+delegate(document,'click','[data-claim-action]',(_,target)=>toast(`${target.dataset.claimAction==='support'?'Supporting evidence':'Counterevidence'} can be attached manually, but Libre also searches for independent evidence automatically at publication.`));
 delegate(document,'click','[data-new-collection]',newCollectionModal);
 
 delegate(document,'submit','[data-comment-form]',(event,form)=>{event.preventDefault();const data=new FormData(form);const body=String(data.get('body')||'').trim();if(!body)return;repository.addComment({scopeType:form.dataset.scopeType,scopeId:form.dataset.scopeId,body,parentId:pendingReply});pendingReply=null;renderRoute(route);toast('Comment added.');});
@@ -182,13 +187,48 @@ delegate(document,'click','[data-reset-algorithm]',()=>{repository.updateAlgorit
 // Studio
 delegate(document,'click','[data-create-draft]',()=>{try{const draft=repository.createDraft({title:'Untitled Knowledge Space'});transitionNavigate(`/studio/${draft.id}`);}catch(error){toast(error.message);openAuth('signup');}});
 delegate(document,'click','[data-create-studio-object]',(_,target)=>{const draftId=qs('[data-draft-id]')?.dataset.draftId;if(draftId)objectCreateModal(target.dataset.createStudioObject,draftId);});
-delegate(document,'submit','[data-studio-object-form]',(event,form)=>{event.preventDefault();const data=Object.fromEntries(new FormData(form));repository.addDraftObject(form.dataset.draftId,{type:form.dataset.type,title:data.title,evidenceState:data.evidenceState});closeTransientOverlay();renderRoute(route);toast('Object added to the knowledge workspace.');});
+delegate(document,'submit','[data-studio-object-form]',(event,form)=>{event.preventDefault();const data=Object.fromEntries(new FormData(form));repository.addDraftObject(form.dataset.draftId,{type:form.dataset.type,title:data.title});closeTransientOverlay();renderRoute(route);toast('Object added. Libre will assess claims and discover sources automatically at publish time.');});
 delegate(document,'input','[data-draft-field]',(_,target)=>{const draftId=qs('[data-draft-id]')?.dataset.draftId;if(draftId)repository.updateDraft(draftId,{[target.dataset.draftField]:target.value});});
 delegate(document,'click','[data-add-reader-path]',(_,target)=>{const draftId=qs('[data-draft-id]')?.dataset.draftId;const draft=repository.getDraft(draftId);if(!draft.readerPath.includes(target.dataset.addReaderPath)){repository.setReaderPath(draftId,[...draft.readerPath,target.dataset.addReaderPath]);renderRoute(route);}});
 delegate(document,'click','[data-connect-object]',(_,target)=>{const draftId=qs('[data-draft-id]')?.dataset.draftId;if(draftId)connectModal(draftId,target.dataset.connectObject);});
 delegate(document,'submit','[data-connect-form]',(event,form)=>{event.preventDefault();const data=Object.fromEntries(new FormData(form));repository.addDraftRelation(form.dataset.draftId,{fromId:form.dataset.fromId,toId:data.toId,type:data.type});closeTransientOverlay();renderRoute(route);toast('Relationship added.');});
-delegate(document,'click','[data-preview-draft]',()=>{const draftId=qs('[data-draft-id]')?.dataset.draftId;const draft=repository.getDraft(draftId);if(!draft)return;toast('Preview uses the same Knowledge Space renderer after publication. Publish locally to inspect the full route-backed Space.');});
-delegate(document,'click','[data-publish-draft]',()=>{const draftId=qs('[data-draft-id]')?.dataset.draftId;try{const publication=repository.publishDraft(draftId);toast('Knowledge Space published locally.');transitionNavigate(`/space/${publication.id}/story`);}catch(error){toast(error.message);}});
+delegate(document,'click','[data-preview-draft]',()=>{const draftId=qs('[data-draft-id]')?.dataset.draftId;const draft=repository.getDraft(draftId);if(!draft)return;toast('Preview uses the current draft. Automatic source discovery and final evidence classification run when you publish.');});
+
+delegate(document,'click','[data-publish-draft]',async(_,target)=>{
+  const draftId=qs('[data-draft-id]')?.dataset.draftId;
+  if(!draftId || target.disabled) return;
+  const original=target.innerHTML;
+  target.disabled=true;
+  target.setAttribute('aria-busy','true');
+  target.innerHTML=`${icon('search',15)} Finding sources…`;
+  try {
+    const draft=repository.getDraft(draftId);
+    if(!draft) throw new Error('Draft not found.');
+    const state=repository.getState();
+    const topics=draft.topicId
+      ? state.graph.objects.filter((object)=>object.id===draft.topicId&&object.type==='topic').map((object)=>object.title)
+      : [];
+    const claims=draft.objects.filter((object)=>object.type==='claim');
+    if(claims.length) {
+      const discovery=await discoverSourcesForDraft(draft,{fetchImpl:globalThis.fetch,topics,maxSourcesPerClaim:10});
+      if(discovery.providerSuccesses===0) throw new Error('Libre could not reach any source index. Nothing was published; check your connection and try again.');
+      const summary=repository.importDiscoveredSources(draftId,discovery);
+      target.innerHTML=`${icon('layers',15)} Classifying evidence…`;
+      toast(`Libre searched ${discovery.providerSuccesses} source-provider routes and attached ${summary.addedSources} relevant source${summary.addedSources===1?'':'s'}.`);
+    }
+    const publication=repository.publishDraft(draftId);
+    toast(`Published. Libre classified this Space as ${publication.evidenceState}.`);
+    transitionNavigate(`/space/${publication.id}/story`);
+  } catch(error) {
+    toast(error.message || 'Source discovery failed. Nothing was published.');
+  } finally {
+    if(target.isConnected) {
+      target.disabled=false;
+      target.removeAttribute('aria-busy');
+      target.innerHTML=original;
+    }
+  }
+});
 
 window.addEventListener('keydown',(event)=>{
   if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){event.preventDefault();openCommand();}

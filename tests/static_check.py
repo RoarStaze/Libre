@@ -27,10 +27,11 @@ for token in ['--accent','signal--claim','space-overlay','studio-page','mobile-n
 floating=(root/'styles'/'floating-signals.css').read_text()
 for token in [
     '.knowledge-stream',
-    '.signal {',
+    '.signal.signal-card',
     'border-radius:',
     'box-shadow:',
-    'translateZ(34px)',
+    '--card-z: 34px;',
+    'translate3d(0,-2px,34px)',
     'background:',
     '@media (prefers-reduced-motion: reduce)'
 ]:

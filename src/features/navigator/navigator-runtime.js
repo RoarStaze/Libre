@@ -1,5 +1,5 @@
 import {
-  selectNavigatorNode,expandNavigatorNode,advanceNavigator,navigatorBack,navigatorForward,navigatorJump,navigatorOrigin,
+  getNavigatorSession,selectNavigatorNode,expandNavigatorNode,advanceNavigator,navigatorBack,navigatorForward,navigatorJump,navigatorOrigin,
   toggleNavigatorPin,toggleNavigatorHide,toggleNavigatorFilter,toggleNavigatorAtlas,toggleNavigatorVisible,resetNavigatorSession,rerenderKnowledgeNavigator,navigatorSearch
 } from './navigator.js';
 
@@ -30,6 +30,13 @@ function delegatedClick(event){
   if(target.matches('[data-nav-visible]')){ toggleNavigatorVisible(target.dataset.navVisible==='true'); refresh(); return; }
   if(target.matches('[data-nav-reset]')){ resetNavigatorSession(target.dataset.navReset||currentSpaceId()); refresh(); return; }
 }
+
+document.addEventListener('click',event=>{
+  const target=event.target.closest?.('[data-open-object]');
+  if(!target||!target.closest('.space-overlay')||target.closest('.knowledge-navigator'))return;
+  const object=objectById(target.dataset.openObject);
+  if(object&&!['topic','person'].includes(object.type))advanceNavigator(object.id);
+},true);
 
 document.addEventListener('click',delegatedClick);
 document.addEventListener('dblclick',event=>{ const target=event.target.closest('[data-nav-node]'); if(target)dive(target.dataset.navNode); });

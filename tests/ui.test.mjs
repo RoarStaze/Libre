@@ -15,11 +15,14 @@ function context() {
   return {repository,state,graph:state.graph,selectors:createSelectors(state.graph)};
 }
 
-test('Stream renders heterogeneous native signal families', () => {
+test('Stream renders heterogeneous native signal families in the dense discovery-card system', () => {
   const {state,graph}=context();
   const markup=renderStream({graph,state,mode:'for-you'});
   for (const token of ['signal--investigation','signal--claim','signal--document','signal--trail']) assert.match(markup,new RegExp(token));
-  assert.match(markup,/Knowledge is not a feed/);
+  assert.match(markup,/Knowledge Stream/);
+  assert.match(markup,/signal-card-visual/);
+  assert.match(markup,/signal-card-body/);
+  assert.match(markup,/stream-topic-chip/);
   assert.match(markup,/My Algorithm/);
 });
 

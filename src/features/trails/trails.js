@@ -13,8 +13,7 @@ export function forkSpace(repository, sourceId) {
   const source=state.graph.objects.find((object)=>object.id===sourceId);
   if(!source) throw new Error('Source Space not found.');
   const draft=repository.createDraft({title:`Fork of ${source.title}`,topicId:source.topicIds?.[0]||null,forkedFrom:sourceId});
-  repository.updateDraft(draft.id,{subtitle:source.subtitle||'',summary:`Forked from ${source.title}. Reused objects keep their original IDs and provenance.`});
   const readerPath=source.readerPath || source.steps || [sourceId];
-  repository.setReaderPath(draft.id,readerPath);
+  repository.updateDraft(draft.id,{subtitle:source.subtitle||'',summary:`Forked from ${source.title}. Reused objects keep their original IDs and provenance.`,readerPath:[...readerPath]});
   return repository.getDraft(draft.id);
 }

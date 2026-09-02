@@ -27,18 +27,19 @@ export function renderStream({ graph, state, mode='for-you' }) {
   if (mode==='trending') ranked=[...ranked].sort((a,b)=>(b.object.popularity||0)-(a.object.popularity||0));
   if (!ranked.length) ranked=rankCandidates({...profile,followedTopics:[],followedCreators:[]},objects,graph.relations);
 
+  const topics=objects.filter((object)=>object.type==='topic').sort((a,b)=>(b.popularity||0)-(a.popularity||0)).slice(0,8);
+  const count=Math.min(20,ranked.length);
+
   return `<section class="stream-shell" data-stream-mode="${mode}">
-    <div class="stream-intro">
-      <div class="stream-intro-copy">
-        <h1>Knowledge is not a feed. <span>It is a place you can enter.</span></h1>
-        <p>Follow the evidence, branch into opposing views, build Trails, inspect claims, and keep the original source attached as ideas move.</p>
-      </div>
-      <div class="stream-orbit" aria-hidden="true"><i class="orbit-node"></i><i class="orbit-node"></i><i class="orbit-node"></i></div>
+    <div class="stream-context-row">
+      <div class="stream-context-copy"><span>Knowledge Stream</span><strong>${modeLabels[mode]}</strong><small>${count} signals selected for this view</small></div>
+      <button class="quiet-button algorithm-shortcut" data-route="/algorithm">${icon('settings',16)} My Algorithm</button>
     </div>
     <div class="stream-controls" role="tablist" aria-label="Stream mode">
       ${Object.entries(modeLabels).map(([id,label])=>`<button class="mode-chip" role="tab" aria-selected="${mode===id}" data-stream-mode="${id}">${label}</button>`).join('')}
-      <button class="quiet-button algorithm-shortcut" data-route="/algorithm">${icon('settings',16)} My Algorithm</button>
+      <span class="stream-control-divider" aria-hidden="true"></span>
+      ${topics.map((topic)=>`<button class="stream-topic-chip" data-route="/topic/${topic.id}">${topic.title}</button>`).join('')}
     </div>
-    <div class="knowledge-stream" aria-label="Knowledge Stream">${ranked.slice(0,16).map((entry)=>renderSignal(entry,graph)).join('')}</div>
+    <div class="knowledge-stream" aria-label="Knowledge Stream">${ranked.slice(0,20).map((entry)=>renderSignal(entry,graph)).join('')}</div>
   </section>`;
 }

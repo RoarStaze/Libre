@@ -1,0 +1,81 @@
+:root {
+  color-scheme: dark;
+  --ui-font: "Segoe UI Variable Text", "Segoe UI", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --display-font: "Segoe UI Variable Display", "Segoe UI", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --reading-font: "Segoe UI Variable Text", "Segoe UI", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --mono-font: "Cascadia Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --bg: #090a0c;
+  --bg-elevated: #0d0f12;
+  --surface: #111318;
+  --surface-2: #171a20;
+  --surface-3: #1e2229;
+  --text: #f4f1e8;
+  --text-2: #c8c7c0;
+  --muted: #8d929c;
+  --faint: #5f6570;
+  --line: rgba(255,255,255,.11);
+  --line-strong: rgba(255,255,255,.2);
+  --accent: #9c8cff;
+  --accent-2: #68d7ff;
+  --accent-soft: rgba(156,140,255,.16);
+  --support: #70d79b;
+  --support-soft: rgba(112,215,155,.14);
+  --challenge: #ff8b8b;
+  --challenge-soft: rgba(255,139,139,.14);
+  --uncertain: #e9c46a;
+  --uncertain-soft: rgba(233,196,106,.14);
+  --source: #6ec5ff;
+  --source-soft: rgba(110,197,255,.14);
+  --shadow: 0 22px 70px rgba(0,0,0,.42);
+  --shadow-soft: 0 12px 34px rgba(0,0,0,.24);
+  --radius-xs: 7px;
+  --radius-sm: 11px;
+  --radius-md: 18px;
+  --radius-lg: 28px;
+  --radius-xl: 40px;
+  --space-1: .25rem;
+  --space-2: .5rem;
+  --space-3: .75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4.5rem;
+  --content-max: 1500px;
+  --reading-max: 760px;
+  --header-h: 72px;
+  --ease: cubic-bezier(.2,.8,.2,1);
+  --spring: cubic-bezier(.16,1,.3,1);
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f4f1e8;
+  --bg-elevated: #fbfaf6;
+  --surface: #ffffff;
+  --surface-2: #f0eee7;
+  --surface-3: #e8e5dc;
+  --text: #111319;
+  --text-2: #343842;
+  --muted: #676c75;
+  --faint: #8e929a;
+  --line: rgba(20,24,31,.12);
+  --line-strong: rgba(20,24,31,.22);
+  --accent: #6252d4;
+  --accent-2: #007aa7;
+  --accent-soft: rgba(98,82,212,.1);
+  --support: #187b4d;
+  --support-soft: rgba(24,123,77,.1);
+  --challenge: #b33f4b;
+  --challenge-soft: rgba(179,63,75,.09);
+  --uncertain: #8b6814;
+  --uncertain-soft: rgba(139,104,20,.1);
+  --source: #176c93;
+  --source-soft: rgba(23,108,147,.1);
+  --shadow: 0 22px 70px rgba(52,47,38,.15);
+  --shadow-soft: 0 12px 34px rgba(52,47,38,.1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+}

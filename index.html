@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="description" content="Libre — a knowledge network for sources, claims, trails, and ideas worth examining.">
+  <meta name="theme-color" content="#090a0c">
+  <title>Libre — Knowledge, Connected</title>
+  <link rel="stylesheet" href="./styles/tokens.css">
+  <link rel="stylesheet" href="./styles/app.css">
+  <link rel="stylesheet" href="./styles/components.css">
+  <link rel="stylesheet" href="./styles/floating-signals.css">
+  <link rel="stylesheet" href="./styles/evidence-system.css">
+  <link rel="stylesheet" href="./styles/header-search.css">
+  <link rel="stylesheet" href="./styles/header-profile.css">
+  <link rel="stylesheet" href="./styles/creator-workflow.css">
+  <link rel="stylesheet" href="./styles/typography.css">
+  <link rel="stylesheet" href="./styles/sidebar.css">
+  <link rel="stylesheet" href="./styles/navigator.css">
+  <link rel="stylesheet" href="./styles/space-shell.css">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <div id="app" class="app-shell">
+    <header id="global-header" class="global-header"></header>
+    <aside id="global-sidebar" class="libre-sidebar" aria-label="Libre navigation"></aside>
+    <button id="sidebar-scrim" class="sidebar-scrim" type="button" data-toggle-sidebar aria-label="Close navigation"></button>
+    <main id="main-content" class="main-content" tabindex="-1"></main>
+    <nav id="mobile-nav" class="mobile-nav" aria-label="Primary"></nav>
+    <div id="overlay-root"></div>
+    <div id="toast-root" aria-live="polite" aria-atomic="true"></div>
+  </div>
+  <noscript>Libre requires JavaScript for the interactive knowledge network.</noscript>
+  <script type="module" src="./src/features/stream/depth.js"></script>
+  <script type="module" src="./src/app.js"></script>
+  <script type="module" src="./src/features/algorithm/algorithm-interaction.js"></script>
+  <script type="module" src="./src/features/studio/creator-workflow.js"></script>
+  <script type="module" src="./src/features/search/header-search.js"></script>
+  <script type="module" src="./src/features/profile/header-profile-enhancer.js"></script>
+  <script type="module" src="./src/features/navigation/sidebar-runtime.js"></script>
+  <script type="module" src="./src/features/navigator/navigator-runtime.js"></script>
+  <script type="module" src="./src/features/space/space-shell-runtime.js"></script>
+</body>
+</html>

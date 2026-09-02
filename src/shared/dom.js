@@ -39,6 +39,7 @@ export function typePill(type='object') {
 }
 
 export function avatarMarkup(person, size='') {
-  const letters = person?.avatar || person?.title?.split(/\s+/).map((w)=>w[0]).join('').slice(0,2).toUpperCase() || 'L';
+  const source = person?.avatar || person?.displayName || person?.title || person?.email?.split('@')[0] || 'Libre';
+  const letters = person?.avatar || String(source).trim().split(/\s+/).filter(Boolean).map((word)=>word[0]).join('').slice(0,2).toUpperCase() || 'L';
   return `<span class="avatar ${size}">${escapeHTML(letters)}</span>`;
 }

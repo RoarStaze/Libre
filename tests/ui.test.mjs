@@ -62,6 +62,23 @@ test('Studio is graph-first and requires identity before publishing', () => {
   assert.match(markup,/Object shelf/);
   assert.match(markup,/Knowledge workspace/);
   assert.match(markup,/Reader Path/);
+  assert.match(markup,/Automatic source discovery runs when you publish/);
+  assert.match(markup,/Source \(optional\)/);
+  assert.match(markup,/Creators never choose evidence labels/);
+});
+
+test('Studio exposes classification process metrics without presenting a truth probability', () => {
+  const {repository}=context();
+  repository.signUp({email:'assessment@libre.local',password:'secret12',displayName:'Assessment UI'});
+  const draft=repository.createDraft({title:'Assessment Test'});
+  repository.addDraftObject(draft.id,{type:'claim',title:'A testable claim'});
+  const markup=studioMarkup({repository,graph:repository.getState().graph,draftId:draft.id});
+  assert.match(markup,/assessment confidence/);
+  assert.match(markup,/independent source groups/);
+  assert.match(markup,/source quality/);
+  assert.match(markup,/directness/);
+  assert.match(markup,/not the probability that a claim is true/);
+  assert.doesNotMatch(markup,/name="evidenceState"/);
 });
 
 test('Auth page explicitly keeps reading and anonymous discussion open', () => {

@@ -1,0 +1,202 @@
+/* Libre Stream — floating Knowledge Signal surfaces
+   Intentionally layered after app.css so the Continuum's native signal layouts
+   remain intact while every individual Stream object reads as a distinct,
+   elevated physical surface. */
+
+.knowledge-stream {
+  gap: clamp(22px, 2.2vw, 34px);
+  padding: 10px clamp(2px, .6vw, 8px) 36px;
+  perspective: 1400px;
+}
+
+.signal {
+  --signal-tint: rgba(156, 140, 255, .055);
+  --signal-edge: rgba(255, 255, 255, .13);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid var(--signal-edge);
+  border-top-color: color-mix(in srgb, white 18%, var(--signal-edge));
+  border-radius: 26px;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.035), transparent 31%),
+    radial-gradient(120% 95% at 0% 0%, var(--signal-tint), transparent 58%),
+    var(--surface);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.055),
+    inset 0 -1px 0 rgba(0,0,0,.18),
+    0 2px 3px rgba(0,0,0,.28),
+    0 14px 30px rgba(0,0,0,.26),
+    0 38px 76px rgba(0,0,0,.22);
+  transform: translateY(0) translateZ(0);
+  transform-origin: 50% 55%;
+  transition:
+    transform .34s var(--spring),
+    box-shadow .34s var(--spring),
+    border-color .24s var(--ease),
+    background .24s var(--ease);
+  content-visibility: auto;
+  contain-intrinsic-size: 280px;
+}
+
+.signal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(110deg, rgba(255,255,255,.045), transparent 25% 74%, rgba(255,255,255,.018)),
+    linear-gradient(to bottom, rgba(255,255,255,.025), transparent 18%);
+  opacity: .9;
+}
+
+.signal:hover {
+  border-color: color-mix(in srgb, var(--line-strong) 72%, white 28%);
+  transform: translateY(-5px) translateZ(0) scale(1.006);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.085),
+    inset 0 -1px 0 rgba(0,0,0,.16),
+    0 4px 7px rgba(0,0,0,.28),
+    0 22px 44px rgba(0,0,0,.32),
+    0 54px 100px rgba(0,0,0,.28);
+}
+
+.signal:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 48%, var(--line-strong));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.07),
+    0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent),
+    0 18px 40px rgba(0,0,0,.3),
+    0 44px 88px rgba(0,0,0,.24);
+}
+
+.signal-inner {
+  position: relative;
+  z-index: 1;
+  padding-left: clamp(24px, 2.6vw, 40px);
+  padding-right: clamp(24px, 2.6vw, 40px);
+}
+
+/* Each knowledge format gets a restrained material tint while sharing the
+   same physical geometry and elevation language. */
+.signal--investigation { --signal-tint: rgba(156,140,255,.085); }
+.signal--claim { --signal-tint: rgba(112,215,155,.075); }
+.signal--document { --signal-tint: rgba(110,197,255,.08); }
+.signal--video { --signal-tint: rgba(156,140,255,.105); }
+.signal--trail { --signal-tint: rgba(104,215,255,.07); }
+.signal--debate { --signal-tint: rgba(233,196,106,.065); }
+.signal--dataset { --signal-tint: rgba(104,215,255,.09); }
+.signal--collection { --signal-tint: rgba(255,255,255,.035); }
+
+/* Remove older per-type outer backgrounds so the new shared floating surface
+   is the single visual container rather than a card nested inside a card. */
+.signal--claim {
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.035), transparent 31%),
+    radial-gradient(120% 95% at 0% 0%, var(--signal-tint), transparent 58%),
+    var(--surface);
+}
+
+.signal--trail {
+  padding: 0;
+}
+
+.signal--trail .signal-inner {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: clamp(26px, 2.6vw, 40px);
+}
+
+/* Keep internal components visually nested, but make them sit on slightly
+   different material planes inside the elevated post. */
+.claim-balance,
+.trail-step,
+.document-sheet,
+.video-frame,
+.collection-stack span {
+  box-shadow: 0 10px 24px rgba(0,0,0,.16);
+}
+
+.signal-action {
+  transition: transform .18s var(--ease), background .18s var(--ease), color .18s var(--ease);
+}
+
+.signal-action:hover {
+  transform: translateY(-1px);
+}
+
+html[data-theme="light"] .signal {
+  --signal-edge: rgba(22, 27, 35, .12);
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.92), rgba(255,255,255,.25) 32%, transparent 62%),
+    radial-gradient(120% 95% at 0% 0%, var(--signal-tint), transparent 60%),
+    var(--surface);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.96),
+    inset 0 -1px 0 rgba(37,31,22,.035),
+    0 2px 3px rgba(52,47,38,.06),
+    0 13px 28px rgba(52,47,38,.095),
+    0 36px 72px rgba(52,47,38,.11);
+}
+
+html[data-theme="light"] .signal:hover {
+  border-color: rgba(20,24,31,.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,1),
+    0 4px 8px rgba(52,47,38,.07),
+    0 21px 42px rgba(52,47,38,.13),
+    0 50px 92px rgba(52,47,38,.13);
+}
+
+html[data-theme="light"] .signal--investigation { --signal-tint: rgba(98,82,212,.07); }
+html[data-theme="light"] .signal--claim { --signal-tint: rgba(24,123,77,.055); }
+html[data-theme="light"] .signal--document { --signal-tint: rgba(23,108,147,.06); }
+html[data-theme="light"] .signal--video { --signal-tint: rgba(98,82,212,.075); }
+html[data-theme="light"] .signal--trail { --signal-tint: rgba(0,122,167,.055); }
+html[data-theme="light"] .signal--debate { --signal-tint: rgba(139,104,20,.05); }
+html[data-theme="light"] .signal--dataset { --signal-tint: rgba(0,122,167,.06); }
+html[data-theme="light"] .signal--collection { --signal-tint: rgba(40,44,51,.025); }
+
+@media (max-width: 720px) {
+  .knowledge-stream {
+    gap: 18px;
+    padding-inline: 0;
+  }
+
+  .signal {
+    border-radius: 20px;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.045),
+      0 2px 3px rgba(0,0,0,.22),
+      0 12px 24px rgba(0,0,0,.22),
+      0 28px 54px rgba(0,0,0,.18);
+  }
+
+  .signal:hover {
+    transform: translateY(-2px) translateZ(0);
+  }
+
+  .signal-inner {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .signal--trail .signal-inner {
+    padding: 24px 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signal,
+  .signal-action {
+    transition: none !important;
+  }
+
+  .signal:hover,
+  .signal-action:hover {
+    transform: none;
+  }
+}

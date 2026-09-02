@@ -24,7 +24,8 @@ const icons = {
   settings:'<circle cx="12" cy="12" r="3"/><path d="M19 13.5V10.5l-2-.7-.6-1.5.9-1.9-2.1-2.1-1.9.9-1.5-.6L10.5 3h-3L6.8 5l-1.5.6-1.9-.9-2.1 2.1.9 1.9-.6 1.5L0 10.5v3l2 .7.6 1.5-.9 1.9 2.1 2.1 1.9-.9 1.5.6.7 2h3l.7-2 1.5-.6 1.9.9 2.1-2.1-.9-1.9.6-1.5z"/>',
   check:'<path d="m5 12 4 4 10-10"/>',
   fork:'<path d="M6 3v6a3 3 0 0 0 3 3h6M18 3v4a5 5 0 0 1-5 5M6 21v-9"/><circle cx="6" cy="3" r="2"/><circle cx="18" cy="3" r="2"/><circle cx="6" cy="21" r="2"/>',
-  grid:'<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/>'
+  grid:'<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/>',
+  logout:'<path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5"/><path d="m15 8 4 4-4 4M19 12H9"/>'
 };
 
 export function icon(name, size=20, label='') {

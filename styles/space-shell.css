@@ -17,7 +17,6 @@
 }
 .sidebar-closed .space-overlay {
   left: 0;
-  inset-left: 0;
   inset: var(--header-h) 0 0 0;
 }
 
@@ -45,6 +44,10 @@
 }
 .space-overlay.navigator-docked .space-content-shell {
   margin-right:var(--knowledge-navigator-width);
+}
+.space-body {
+  grid-template-columns:minmax(0,1fr);
+  gap:0;
 }
 
 /* Large, but no longer billboard-sized. Long user-created titles get a

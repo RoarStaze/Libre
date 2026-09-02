@@ -39,7 +39,7 @@ for token in [
 
 stream=(root/'src'/'features'/'stream'/'stream.js').read_text()
 assert 'stream-topic-chip' in stream
-assert 'Knowledge discovery' in stream
+assert 'Knowledge Stream' in stream
 
 evidence_css=(root/'styles'/'evidence-system.css').read_text()
 assert 'select[name="evidenceState"]' in evidence_css

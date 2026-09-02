@@ -5,6 +5,7 @@ import fs from 'node:fs';
 const tokens=fs.readFileSync('styles/tokens.css','utf8');
 const app=fs.readFileSync('styles/app.css','utf8');
 const index=fs.readFileSync('index.html','utf8');
+const depth=fs.readFileSync('src/features/stream/depth.js','utf8');
 const typographyPath='styles/typography.css';
 
 test('Libre uses a screen-optimized display and reading font stack',()=>{
@@ -47,4 +48,10 @@ test('legacy ultra-tight large-title rules are superseded by typography layer',(
   const typography=fs.readFileSync(typographyPath,'utf8');
   assert.match(typography,/\.space-title[\s\S]*letter-spacing:\s*-\.025em/);
   assert.match(typography,/\.stream-intro-copy h1[\s\S]*line-height:\s*1\.04/);
+});
+
+test('3d card tilt is restrained so live text remains crisp',()=>{
+  const match=depth.match(/const MAX_TILT = ([0-9.]+);/);
+  assert.ok(match,'MAX_TILT must remain explicit');
+  assert.ok(Number(match[1]) <= 2.5,`MAX_TILT ${match[1]} is too aggressive for readable live text`);
 });

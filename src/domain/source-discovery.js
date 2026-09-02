@@ -123,7 +123,7 @@ export function rankSourceCandidate(input,claimText='') {
   const titleCoverage=overlapScore(claimText,candidate.title);
   const bodyCoverage=overlapScore(claimText,`${candidate.title} ${candidate.abstract}`);
   const exactPhrase=normalizeText(candidate.title).includes(normalizeText(claimText)) || normalizeText(candidate.abstract).includes(normalizeText(claimText));
-  const relevance=clamp(.08 + titleCoverage*.47 + bodyCoverage*.38 + (exactPhrase?.12:0));
+  const relevance=clamp(.08 + titleCoverage*.47 + bodyCoverage*.38 + (exactPhrase ? .12 : 0));
   const {stance,stanceConfidence}=inferStance(candidate,claimText,relevance);
   const typeQuality={
     'meta-analysis':.98,'systematic review':.95,'randomized controlled trial':.92,'journal article':.78,'review':.83,

@@ -1,0 +1,56 @@
+/* Libre owns evidence classification. Creators provide claims, sources, and relationships;
+   the UI never exposes a manual evidence-state control. */
+
+form[data-studio-object-form] .field:has(select[name="evidenceState"]) {
+  display: none !important;
+}
+
+form[data-studio-object-form] .modal-actions::before {
+  content: "Libre assigns evidence status automatically from connected sources and counterevidence. You cannot set this label manually.";
+  display: block;
+  flex: 1 1 100%;
+  margin: 4px 0 14px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent-soft) 58%, var(--surface));
+  color: var(--text-2);
+  font-size: .78rem;
+  line-height: 1.5;
+}
+
+.studio-evidence-note {
+  display: block;
+  max-width: 720px;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: .72rem;
+  line-height: 1.45;
+}
+
+.libre-assessment {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.libre-assessment > span:first-child {
+  color: var(--muted);
+  font-size: .62rem;
+  font-weight: 760;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.libre-assessment > small {
+  color: var(--muted);
+  font-size: .65rem;
+}
+
+@media (max-width: 720px) {
+  .libre-assessment {
+    justify-content: flex-start;
+  }
+}

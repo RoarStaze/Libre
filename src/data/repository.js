@@ -103,7 +103,7 @@ export function createRepository({ storage = globalThis.localStorage } = {}) {
 
   function createDraft({ title='Untitled Space', topicId=null, forkedFrom=null }={}) {
     if (!canPublish()) throw new Error('Sign in to create a publishable Space.');
-    const draft = { id:uid('draft'), title, subtitle:'', summary:'', topicId, creatorId:state.account.id, objects:[], relations:[], readerPath:[], forkedFrom, createdAt:Date.now(), updatedAt:Date.now() };
+    const draft = { id:uid('draft'), title, subtitle:'', summary:'', topicId, creatorId:state.account.id, objects:[], relations:[], readerPath:[], forkedFrom, sourceDiscovery:null, createdAt:Date.now(), updatedAt:Date.now() };
     state.drafts.unshift(draft); emit(); return structuredClone(draft);
   }
   function getDraft(id) { const draft = state.drafts.find((entry) => entry.id === id); return draft ? structuredClone(draft) : null; }
@@ -127,6 +127,69 @@ export function createRepository({ storage = globalThis.localStorage } = {}) {
     emit();
     return structuredClone(created);
   }
+
+  function importDiscoveredSources(draftId, bundle={}) {
+    const draft=state.drafts.find((entry)=>entry.id===draftId);
+    if(!draft) throw new Error('Draft not found.');
+    let addedSources=0;
+    let addedRelations=0;
+    let contextualSources=0;
+    let supportingSources=0;
+    let challengingSources=0;
+
+    for(const discovery of bundle.discoveries||[]) {
+      const claim=draft.objects.find((object)=>object.id===discovery.claimId && object.type==='claim');
+      if(!claim) continue;
+      for(const candidate of discovery.candidates||[]) {
+        const canonicalKey=candidate.canonicalKey || candidate.doi || candidate.url || `${candidate.title}|${candidate.year||''}`;
+        let source=draft.objects.find((object)=>object.autoDiscovered && object.canonicalKey===canonicalKey);
+        if(!source) {
+          const {id:_providerId,evidenceState:_ignoredState,evidenceAssessment:_ignoredAssessment,...fields}=candidate;
+          source={
+            id:uid('source'),
+            ...fields,
+            type:'source',
+            canonicalKey,
+            autoDiscovered:true,
+            discoveredBy:'libre-source-discovery-v1',
+            discoveredAt:Date.now(),
+            metadataLocked:true
+          };
+          draft.objects.push(source);
+          addedSources++;
+        }
+
+        let relationType='cites';
+        if(candidate.stance==='supports' && Number(candidate.stanceConfidence)>=.64) relationType='supports';
+        else if(candidate.stance==='contradicts' && Number(candidate.stanceConfidence)>=.64) relationType='contradicts';
+        if(relationType==='supports') supportingSources++;
+        else if(relationType==='contradicts') challengingSources++;
+        else contextualSources++;
+
+        if(!draft.relations.some((relation)=>relation.fromId===claim.id && relation.toId===source.id && relation.type===relationType)) {
+          draft.relations.push({id:uid('relation'),fromId:claim.id,toId:source.id,type:relationType,autoDiscovered:true,createdAt:Date.now()});
+          addedRelations++;
+        }
+      }
+    }
+
+    draft.sourceDiscovery={
+      method:'libre-source-discovery-v1',
+      searchedAt:Date.now(),
+      claimsSearched:Number(bundle.claimsSearched||0),
+      providerSuccesses:Number(bundle.providerSuccesses||0),
+      providerFailures:[...(bundle.providerFailures||[])],
+      addedSources,
+      addedRelations,
+      supportingSources,
+      challengingSources,
+      contextualSources
+    };
+    applyDraftEvidence(draft);
+    emit();
+    return structuredClone(draft.sourceDiscovery);
+  }
+
   function setReaderPath(draftId, path) { const draft=state.drafts.find((entry)=>entry.id===draftId); if (!draft) throw new Error('Draft not found.'); draft.readerPath=[...path]; emit(); return [...draft.readerPath]; }
   function publishDraft(draftId) {
     if (!canPublish()) throw new Error('Sign in to publish.');
@@ -134,7 +197,16 @@ export function createRepository({ storage = globalThis.localStorage } = {}) {
     applyDraftEvidence(draft);
     const spaceId = uid('space');
     const publicationEvidence = derivePublicationEvidence(draft.objects);
-    const publication = { id:spaceId, type:'publication', title:draft.title, subtitle:draft.subtitle, summary:draft.summary, creatorId:state.account.id, topicIds:draft.topicId?[draft.topicId]:[], format:'knowledge-space', evidenceState:publicationEvidence, evidenceAssessment:{method:'libre-auto-v1',derivedFromClaims:true}, sourceCount:draft.objects.filter((o)=>['source','document'].includes(o.type)).length, claimCount:draft.objects.filter((o)=>o.type==='claim').length, readMinutes:Math.max(3, Math.ceil(draft.objects.length*1.5)), createdAt:Date.now(), updatedAt:Date.now(), popularity:1, depth:70, readerPath:draft.readerPath, forkedFrom:draft.forkedFrom };
+    const claimAssessments=draft.objects.filter((o)=>o.type==='claim').map((o)=>({claimId:o.id,state:o.evidenceState,confidence:o.evidenceAssessment?.confidence||0}));
+    const publication = {
+      id:spaceId,type:'publication',title:draft.title,subtitle:draft.subtitle,summary:draft.summary,creatorId:state.account.id,
+      topicIds:draft.topicId?[draft.topicId]:[],format:'knowledge-space',evidenceState:publicationEvidence,
+      evidenceAssessment:{method:'libre-auto-v2',frameworkVersion:2,derivedFromClaims:true,claimAssessments,sourceDiscovery:draft.sourceDiscovery||null},
+      sourceCount:draft.objects.filter((o)=>['source','document','dataset'].includes(o.type)).length,
+      claimCount:draft.objects.filter((o)=>o.type==='claim').length,
+      readMinutes:Math.max(3, Math.ceil(draft.objects.length*1.5)),createdAt:Date.now(),updatedAt:Date.now(),popularity:1,depth:70,
+      readerPath:draft.readerPath,forkedFrom:draft.forkedFrom,sourceDiscovery:draft.sourceDiscovery||null
+    };
     state.graph.objects.push(publication, ...draft.objects);
     state.graph.relations.push(...draft.relations, ...draft.readerPath.map((objectId, index)=>({id:uid('relation'),fromId:spaceId,toId:objectId,type:'part_of',order:index})));
     if (draft.forkedFrom) state.graph.relations.push({id:uid('relation'),fromId:spaceId,toId:draft.forkedFrom,type:'forked_from'});
@@ -148,5 +220,5 @@ export function createRepository({ storage = globalThis.localStorage } = {}) {
   function reset() { state=initialState(); emit(); }
   function subscribe(listener){ listeners.add(listener); return ()=>listeners.delete(listener); }
 
-  return { getState, subscribe, getAnonymousIdentity, addComment, listComments, voteComment, reportContent, saveObject, unsaveObject, followEntity, unfollowEntity, negativeFeedback, updateAlgorithm, addHistory, signUp, signIn, signOut, canPublish, createDraft, getDraft, updateDraft, addDraftObject, addDraftRelation, setReaderPath, publishDraft, createCollection, addToCollection, setTrailProgress, setTheme, reset };
+  return { getState, subscribe, getAnonymousIdentity, addComment, listComments, voteComment, reportContent, saveObject, unsaveObject, followEntity, unfollowEntity, negativeFeedback, updateAlgorithm, addHistory, signUp, signIn, signOut, canPublish, createDraft, getDraft, updateDraft, addDraftObject, addDraftRelation, importDiscoveredSources, setReaderPath, publishDraft, createCollection, addToCollection, setTrailProgress, setTheme, reset };
 }

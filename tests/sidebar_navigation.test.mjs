@@ -32,12 +32,14 @@ test('sidebar renders followed people and topics as live destinations',()=>{
   assert.match(markup,new RegExp(`data-route="/topic/${topic.id}"`));
 });
 
-test('sidebar toggle exists in the real header and shell contains persistent drawer',()=>{
-  const app=fs.readFileSync('src/app.js','utf8');
+test('sidebar toggle is injected into the real header and shell contains persistent drawer',()=>{
+  const runtime=fs.readFileSync('src/features/navigation/sidebar-runtime.js','utf8');
   const index=fs.readFileSync('index.html','utf8');
-  assert.match(app,/data-toggle-sidebar/);
+  assert.match(runtime,/data-toggle-sidebar/);
+  assert.match(runtime,/libre-sidebar-open-v1/);
   assert.match(index,/id="global-sidebar"/);
   assert.match(index,/styles\/sidebar\.css/);
+  assert.match(index,/navigation\/sidebar-runtime\.js/);
 });
 
 test('sidebar stream rows use real Stream modes',()=>{

@@ -1,0 +1,241 @@
+/* Compact account control for Libre's global header. */
+.header-profile {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.header-profile-button {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  padding: 4px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--surface) 94%, var(--accent-soft));
+  color: var(--text);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.055) inset,
+    0 7px 20px rgba(0,0,0,.18);
+  transition:
+    transform .18s var(--ease),
+    border-color .18s var(--ease),
+    background .18s var(--ease),
+    box-shadow .18s var(--ease);
+}
+
+.header-profile-button:hover {
+  transform: translateY(-2px) scale(1.035);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line-strong));
+  background: color-mix(in srgb, var(--surface-2) 90%, var(--accent-soft));
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.075) inset,
+    0 13px 28px rgba(0,0,0,.28);
+}
+
+.header-profile-button[aria-expanded="true"] {
+  border-color: color-mix(in srgb, var(--accent) 72%, white 4%);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--accent) 13%, transparent),
+    0 12px 28px rgba(0,0,0,.3);
+}
+
+.avatar--header,
+.avatar--menu {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-family: var(--ui-font);
+  font-weight: 780;
+  letter-spacing: -.035em;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 30% 24%, color-mix(in srgb, white 12%, transparent), transparent 38%),
+    color-mix(in srgb, var(--accent) 16%, var(--surface-2));
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line-strong));
+  box-shadow: 0 1px 0 rgba(255,255,255,.06) inset;
+}
+
+.avatar--header {
+  width: 34px;
+  height: 34px;
+  font-size: .67rem;
+}
+
+.avatar--menu {
+  width: 46px;
+  height: 46px;
+  font-size: .78rem;
+}
+
+.profile-presence {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--bg-elevated);
+  border-radius: 50%;
+  background: var(--support);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--support) 32%, transparent);
+}
+
+.header-profile-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 115;
+  width: min(318px, calc(100vw - 24px));
+  padding: 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 19px;
+  background: color-mix(in srgb, var(--bg-elevated) 96%, transparent);
+  backdrop-filter: blur(22px) saturate(145%);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.055) inset,
+    0 24px 65px rgba(0,0,0,.42),
+    0 8px 20px rgba(0,0,0,.22);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-7px) scale(.985);
+  transform-origin: top right;
+  transition:
+    opacity .16s var(--ease),
+    transform .18s var(--ease),
+    visibility .18s;
+}
+
+.header-profile[data-open="true"] .header-profile-menu {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+}
+
+.profile-menu-identity {
+  display: grid;
+  grid-template-columns: auto minmax(0,1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 8px 8px 10px;
+}
+
+.profile-menu-copy {
+  min-width: 0;
+}
+
+.profile-menu-copy strong,
+.profile-menu-copy span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-menu-copy strong {
+  font-size: .91rem;
+  font-weight: 760;
+  letter-spacing: -.015em;
+}
+
+.profile-menu-copy span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: .72rem;
+}
+
+.profile-menu-divider {
+  height: 1px;
+  margin: 4px 5px;
+  background: var(--line);
+}
+
+.profile-menu-item {
+  width: 100%;
+  min-height: 52px;
+  display: grid;
+  grid-template-columns: 28px minmax(0,1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-2);
+  text-align: left;
+  transition: background .14s var(--ease), color .14s var(--ease), transform .14s var(--ease);
+}
+
+.profile-menu-item:hover,
+.profile-menu-item:focus-visible {
+  background: var(--surface-2);
+  color: var(--text);
+  transform: translateX(2px);
+}
+
+.profile-menu-item > svg:first-child {
+  color: var(--muted);
+}
+
+.profile-menu-item span {
+  min-width: 0;
+}
+
+.profile-menu-item strong,
+.profile-menu-item small {
+  display: block;
+}
+
+.profile-menu-item strong {
+  font-size: .82rem;
+  font-weight: 700;
+}
+
+.profile-menu-item small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: .66rem;
+  line-height: 1.3;
+}
+
+.profile-menu-item--danger:hover,
+.profile-menu-item--danger:focus-visible {
+  color: var(--challenge);
+  background: color-mix(in srgb, var(--challenge) 9%, transparent);
+}
+
+@media (max-width: 620px) {
+  .header-profile-button {
+    width: 42px;
+    height: 42px;
+  }
+
+  .avatar--header {
+    width: 32px;
+    height: 32px;
+  }
+
+  .header-profile-menu {
+    right: -3px;
+    width: min(304px, calc(100vw - 18px));
+    border-radius: 17px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header-profile-button,
+  .header-profile-menu,
+  .profile-menu-item {
+    transition: none;
+  }
+
+  .header-profile-button:hover,
+  .profile-menu-item:hover,
+  .profile-menu-item:focus-visible {
+    transform: none;
+  }
+}

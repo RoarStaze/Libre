@@ -130,7 +130,12 @@ function visualCollection(object) {
   </div>`;
 }
 
+function customThumbnail(object) {
+  return `<div class="signal-visual-art visual-custom-thumbnail"><img class="signal-card-thumbnail" src="${escapeHTML(object.thumbnail)}" alt="${escapeHTML(object.title)} thumbnail"><div class="thumbnail-vignette" aria-hidden="true"></div></div>`;
+}
+
 function visualFor(object, graph) {
+  if(object.thumbnail) return customThumbnail(object);
   if (object.type === 'claim') return visualClaim(object);
   if (object.type === 'document') return visualDocument(object);
   if (object.type === 'video') return visualVideo(object);

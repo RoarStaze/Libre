@@ -5,8 +5,7 @@ import fs from 'node:fs';
 const space=fs.readFileSync('src/features/space/space.js','utf8');
 const navigator=fs.readFileSync('src/features/navigator/navigator.js','utf8');
 const runtime=fs.readFileSync('src/features/navigator/navigator-runtime.js','utf8');
-const app=fs.readFileSync('src/app.js','utf8');
-const router=fs.readFileSync('src/router.js','utf8');
+const shellRuntime=fs.readFileSync('src/features/space/space-shell-runtime.js','utf8');
 const index=fs.readFileSync('index.html','utf8');
 
 const shellPath='styles/space-shell.css';
@@ -17,9 +16,11 @@ test('Space uses browser-style back and forward controls instead of a close X',(
   const toolbar=space.match(/<div class="space-toolbar">[\s\S]*?<\/div>\n\s*<div class="space-content-shell/);
   assert.ok(toolbar,'Space toolbar should be followed by the content shell');
   assert.doesNotMatch(toolbar[0],/data-close-space/);
-  assert.match(app,/\[data-space-back\]/);
-  assert.match(app,/\[data-space-forward\]/);
-  assert.match(router,/export function forward\(\)/);
+  assert.match(shellRuntime,/\[data-space-back\]/);
+  assert.match(shellRuntime,/\[data-space-forward\]/);
+  assert.match(shellRuntime,/history\.back\(\)/);
+  assert.match(shellRuntime,/history\.forward\(\)/);
+  assert.match(index,/space-shell-runtime\.js/);
 });
 
 test('Space structure keeps Navigator outside reading content as a right dock',()=>{
@@ -58,4 +59,10 @@ test('long Space titles use a restrained readable scale',()=>{
 test('Navigator runtime owns a single toolbar visibility toggle',()=>{
   assert.match(runtime,/data-nav-toggle/);
   assert.match(runtime,/toggleNavigatorVisible\(\)/);
+});
+
+test('graph framing uses actual current and origin positions and avoids permanent edge-label clutter',()=>{
+  assert.match(navigator,/currentPos=p\.get\(session\.currentId\)/);
+  assert.match(navigator,/originPos=p\.get\(session\.originId\)/);
+  assert.doesNotMatch(navigator,/nav-edge[^\n]+<text/);
 });

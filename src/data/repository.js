@@ -242,6 +242,14 @@ export function createRepository({ storage = globalThis.localStorage } = {}) {
     return structuredClone(created);
   }
 
+  function removeDraftRelation(draftId, relationId) {
+    const draft=requireDraftOwner(draftId);
+    const before=draft.relations.length;
+    draft.relations=draft.relations.filter((relation)=>relation.id!==relationId);
+    if(draft.relations.length===before) return false;
+    applyDraftEvidence(draft); emit(); return true;
+  }
+
   function importDiscoveredSources(draftId, bundle={}) {
     const draft=requireDraftOwner(draftId);
     let addedSources=0;
@@ -368,5 +376,5 @@ export function createRepository({ storage = globalThis.localStorage } = {}) {
   function reset() { state=initialState(); emit(); }
   function subscribe(listener){ listeners.add(listener); return ()=>listeners.delete(listener); }
 
-  return { getState, subscribe, getAnonymousIdentity, addComment, listComments, voteComment, reportContent, saveObject, unsaveObject, followEntity, unfollowEntity, negativeFeedback, updateAlgorithm, addHistory, signUp, signIn, signOut, canPublish, canEditPublication, createDraft, createEditDraft, getDraft, updateDraft, addDraftObject, updateDraftObject, removeDraftObject, addDraftRelation, importDiscoveredSources, setReaderPath, publishDraft, createCollection, addToCollection, setTrailProgress, setTheme, reset };
+  return { getState, subscribe, getAnonymousIdentity, addComment, listComments, voteComment, reportContent, saveObject, unsaveObject, followEntity, unfollowEntity, negativeFeedback, updateAlgorithm, addHistory, signUp, signIn, signOut, canPublish, canEditPublication, createDraft, createEditDraft, getDraft, updateDraft, addDraftObject, updateDraftObject, removeDraftObject, addDraftRelation, removeDraftRelation, importDiscoveredSources, setReaderPath, publishDraft, createCollection, addToCollection, setTrailProgress, setTheme, reset };
 }

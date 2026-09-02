@@ -15,7 +15,7 @@ required=[
  'src/features/stream/stream.js','src/features/stream/signals.js','src/features/space/space.js',
  'src/features/space/lenses.js','src/features/studio/studio.js','src/features/search/search.js',
  'src/features/algorithm/algorithm.js','src/features/trails/trails.js','src/data/repository.js',
- 'src/domain/evidence.js','styles/floating-signals.css','styles/evidence-system.css'
+ 'src/domain/evidence.js','src/domain/source-discovery.js','styles/floating-signals.css','styles/evidence-system.css'
 ]
 for path in required:
     assert (root/path).exists(), path
@@ -42,13 +42,26 @@ assert 'stream-topic-chip' in stream
 assert 'Knowledge Stream' in stream
 
 evidence_css=(root/'styles'/'evidence-system.css').read_text()
-assert 'select[name="evidenceState"]' in evidence_css
-assert 'display: none !important' in evidence_css
-assert 'Libre assigns evidence status automatically' in evidence_css
+for token in ['select[name="evidenceState"]','display: none !important','.source-discovery-banner','.libre-assessment-metrics','assessment-caveat']:
+    assert token in evidence_css, token
 
 repository=(root/'src'/'data'/'repository.js').read_text()
-assert 'recalculateDraftEvidence' in repository
-assert 'derivePublicationEvidence' in repository
-assert '_ignoredEvidenceState' in repository
+for token in ['recalculateDraftEvidence','derivePublicationEvidence','_ignoredEvidenceState','importDiscoveredSources','libre-auto-v2','metadataLocked']:
+    assert token in repository, token
+
+evidence=(root/'src'/'domain'/'evidence.js').read_text()
+for token in ['scoreSourceQuality','canonicalSourceGroup','independentSourceGroups','retractedSources','libre-auto-v2','confidence']:
+    assert token in evidence, token
+
+source_discovery=(root/'src'/'domain'/'source-discovery.js').read_text()
+for token in ['discoverSourcesForDraft','crossref','datacite','europe-pmc','internet-archive','federal-register','dedupeSourceCandidates']:
+    assert token in source_discovery, token
+
+app=(root/'src'/'app.js').read_text()
+assert 'discoverSourcesForDraft' in app
+assert 'Finding sources' in app
+assert 'Classifying evidence' in app
+# The creation modal itself must no longer expose the old evidence-state field.
+assert '<select name="evidenceState">' not in app
 
 print('static-check: PASS')

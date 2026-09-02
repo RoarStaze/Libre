@@ -2,6 +2,7 @@ import { createSeedGraph } from '../domain/seed.js';
 import { derivePublicationEvidence, recalculateDraftEvidence } from '../domain/evidence.js';
 
 const KEY = 'libre-continuum-state-v1';
+const MAX_LOCAL_THUMBNAIL_LENGTH = 2_800_000;
 
 function uid(prefix='id') {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
@@ -38,6 +39,11 @@ export function createRepository({ storage = globalThis.localStorage } = {}) {
   let state;
   try { state = JSON.parse(storage.getItem(KEY)) || initialState(); }
   catch { state = initialState(); }
+
+  state.drafts ||= [];
+  state.graph ||= createSeedGraph();
+  state.graph.objects ||= [];
+  state.graph.relations ||= [];
 
   const persist = () => storage.setItem(KEY, JSON.stringify(state));
   const listeners = new Set();
@@ -101,26 +107,134 @@ export function createRepository({ storage = globalThis.localStorage } = {}) {
   function signOut() { state.account = null; emit(); }
   const canPublish = () => Boolean(state.account && !state.account.isAnonymous);
 
+  function publicationById(id) {
+    return state.graph.objects.find((entry)=>entry.id===id && entry.type==='publication') || null;
+  }
+
+  function canEditPublication(publicationId) {
+    const publication=publicationById(publicationId);
+    return Boolean(state.account && publication && publication.creatorId===state.account.id);
+  }
+
+  function requireDraftOwner(id) {
+    const draft=state.drafts.find((entry)=>entry.id===id);
+    if(!draft) throw new Error('Draft not found.');
+    if(!state.account || draft.creatorId!==state.account.id) throw new Error('You can only edit your own draft.');
+    return draft;
+  }
+
+  function validateThumbnail(value) {
+    if(value == null || value === '') return null;
+    const thumbnail=String(value);
+    if(thumbnail.length > MAX_LOCAL_THUMBNAIL_LENGTH) throw new Error('Thumbnail is too large for local Libre. Use an image under about 2 MB.');
+    if(!/^data:image\/(?:png|jpe?g|webp);base64,/i.test(thumbnail) && !/^https?:\/\//i.test(thumbnail)) throw new Error('Thumbnail must be a PNG, JPEG, WebP, or image URL.');
+    return thumbnail;
+  }
+
   function createDraft({ title='Untitled Space', topicId=null, forkedFrom=null }={}) {
     if (!canPublish()) throw new Error('Sign in to create a publishable Space.');
-    const draft = { id:uid('draft'), title, subtitle:'', summary:'', topicId, creatorId:state.account.id, objects:[], relations:[], readerPath:[], forkedFrom, sourceDiscovery:null, createdAt:Date.now(), updatedAt:Date.now() };
+    const draft = { id:uid('draft'), title, subtitle:'', summary:'', thumbnail:null, topicId, creatorId:state.account.id, objects:[], relations:[], readerPath:[], forkedFrom, sourceDiscovery:null, editingPublicationId:null, originalObjectIds:[], createdAt:Date.now(), updatedAt:Date.now() };
     state.drafts.unshift(draft); emit(); return structuredClone(draft);
   }
-  function getDraft(id) { const draft = state.drafts.find((entry) => entry.id === id); return draft ? structuredClone(draft) : null; }
-  function updateDraft(id, patch) { const draft = state.drafts.find((entry) => entry.id === id); if (!draft) return null; Object.assign(draft, patch, {updatedAt:Date.now()}); emit(); return structuredClone(draft); }
+
+  function publicationObjectIds(publication) {
+    if(Array.isArray(publication.objectIds) && publication.objectIds.length) return [...new Set(publication.objectIds)];
+    const seeds=new Set([...(publication.readerPath||[]), ...(publication.evidenceAssessment?.claimAssessments||[]).map((entry)=>entry.claimId).filter(Boolean)]);
+    const allowed=new Set(['supports','contradicts','cites','derived_from','explains','questions','related_to']);
+    for(let pass=0; pass<3; pass++) {
+      let changed=false;
+      for(const relation of state.graph.relations) {
+        if(!allowed.has(relation.type)) continue;
+        if(seeds.has(relation.fromId) && !seeds.has(relation.toId)) { seeds.add(relation.toId); changed=true; }
+        if(seeds.has(relation.toId) && !seeds.has(relation.fromId)) { seeds.add(relation.fromId); changed=true; }
+      }
+      if(!changed) break;
+    }
+    return [...seeds].filter((id)=>{
+      const object=state.graph.objects.find((entry)=>entry.id===id);
+      return object && !['publication','person','topic'].includes(object.type);
+    });
+  }
+
+  function createEditDraft(publicationId) {
+    const publication=publicationById(publicationId);
+    if(!publication || !state.account || publication.creatorId!==state.account.id) throw new Error('You can only edit knowledge you created.');
+    const existing=state.drafts.find((entry)=>entry.editingPublicationId===publicationId && entry.creatorId===state.account.id);
+    if(existing) return structuredClone(existing);
+    const objectIds=publicationObjectIds(publication);
+    const objectSet=new Set(objectIds);
+    const objects=state.graph.objects.filter((object)=>objectSet.has(object.id)).map((object)=>structuredClone(object));
+    const relations=state.graph.relations.filter((relation)=>{
+      if(relation.spaceId===publicationId && relation.type!=='part_of' && relation.type!=='forked_from') return true;
+      return objectSet.has(relation.fromId) && objectSet.has(relation.toId) && relation.type!=='part_of';
+    }).map((relation)=>structuredClone(relation));
+    const orderedPartOf=state.graph.relations.filter((relation)=>relation.fromId===publicationId && relation.type==='part_of').sort((a,b)=>(a.order||0)-(b.order||0)).map((relation)=>relation.toId);
+    const draft={
+      id:uid('draft'),
+      title:publication.title,
+      subtitle:publication.subtitle||'',
+      summary:publication.summary||'',
+      thumbnail:publication.thumbnail||null,
+      topicId:publication.topicIds?.[0]||null,
+      creatorId:state.account.id,
+      objects,
+      relations,
+      readerPath:[...(publication.readerPath?.length?publication.readerPath:orderedPartOf)],
+      forkedFrom:publication.forkedFrom||null,
+      sourceDiscovery:publication.sourceDiscovery||publication.evidenceAssessment?.sourceDiscovery||null,
+      editingPublicationId:publication.id,
+      originalObjectIds:[...objectIds],
+      createdAt:Date.now(),
+      updatedAt:Date.now()
+    };
+    state.drafts.unshift(draft); emit(); return structuredClone(draft);
+  }
+
+  function getDraft(id) {
+    const draft=state.drafts.find((entry)=>entry.id===id);
+    if(!draft || !state.account || draft.creatorId!==state.account.id) return null;
+    return structuredClone(draft);
+  }
+
+  function updateDraft(id, patch) {
+    const draft=requireDraftOwner(id);
+    const { creatorId:_creator, editingPublicationId:_editing, originalObjectIds:_original, ...safePatch }=patch||{};
+    if(Object.prototype.hasOwnProperty.call(safePatch,'thumbnail')) safePatch.thumbnail=validateThumbnail(safePatch.thumbnail);
+    Object.assign(draft, safePatch, {updatedAt:Date.now()}); emit(); return structuredClone(draft);
+  }
+
   function addDraftObject(draftId, object) {
-    const draft = state.drafts.find((entry) => entry.id === draftId);
-    if (!draft) throw new Error('Draft not found.');
-    const { evidenceState: _ignoredEvidenceState, evidenceAssessment: _ignoredAssessment, ...creatorFields } = object;
-    const created = { id:uid(object.type || 'object'), ...creatorFields };
+    const draft=requireDraftOwner(draftId);
+    const { evidenceState: _ignoredEvidenceState, evidenceAssessment: _ignoredAssessment, creatorId:_ignoredCreator, ...creatorFields } = object;
+    const created = { id:uid(object.type || 'object'), ...creatorFields, creatorId:state.account.id };
     draft.objects.push(created);
     applyDraftEvidence(draft);
     emit();
     return structuredClone(draft.objects.find((entry) => entry.id === created.id));
   }
+
+  function updateDraftObject(draftId, objectId, patch={}) {
+    const draft=requireDraftOwner(draftId);
+    const object=draft.objects.find((entry)=>entry.id===objectId);
+    if(!object) throw new Error('Knowledge object not found.');
+    if(object.metadataLocked) throw new Error('Libre-discovered source metadata is locked. Remove it instead of rewriting its provenance.');
+    const { id:_id,type:_type,creatorId:_creator,evidenceState:_state,evidenceAssessment:_assessment,autoDiscovered:_auto,metadataLocked:_locked,...safePatch }=patch;
+    Object.assign(object,safePatch);
+    applyDraftEvidence(draft); emit(); return structuredClone(object);
+  }
+
+  function removeDraftObject(draftId, objectId) {
+    const draft=requireDraftOwner(draftId);
+    const index=draft.objects.findIndex((entry)=>entry.id===objectId);
+    if(index<0) return false;
+    draft.objects.splice(index,1);
+    draft.relations=draft.relations.filter((relation)=>relation.fromId!==objectId && relation.toId!==objectId);
+    draft.readerPath=draft.readerPath.filter((id)=>id!==objectId);
+    applyDraftEvidence(draft); emit(); return true;
+  }
+
   function addDraftRelation(draftId, relation) {
-    const draft = state.drafts.find((entry) => entry.id === draftId);
-    if (!draft) throw new Error('Draft not found.');
+    const draft=requireDraftOwner(draftId);
     const created={id:uid('relation'),...relation};
     draft.relations.push(created);
     applyDraftEvidence(draft);
@@ -129,8 +243,7 @@ export function createRepository({ storage = globalThis.localStorage } = {}) {
   }
 
   function importDiscoveredSources(draftId, bundle={}) {
-    const draft=state.drafts.find((entry)=>entry.id===draftId);
-    if(!draft) throw new Error('Draft not found.');
+    const draft=requireDraftOwner(draftId);
     let addedSources=0;
     let addedRelations=0;
     let contextualSources=0;
@@ -153,7 +266,8 @@ export function createRepository({ storage = globalThis.localStorage } = {}) {
             autoDiscovered:true,
             discoveredBy:'libre-source-discovery-v1',
             discoveredAt:Date.now(),
-            metadataLocked:true
+            metadataLocked:true,
+            addedBy:state.account.id
           };
           draft.objects.push(source);
           addedSources++;
@@ -190,26 +304,60 @@ export function createRepository({ storage = globalThis.localStorage } = {}) {
     return structuredClone(draft.sourceDiscovery);
   }
 
-  function setReaderPath(draftId, path) { const draft=state.drafts.find((entry)=>entry.id===draftId); if (!draft) throw new Error('Draft not found.'); draft.readerPath=[...path]; emit(); return [...draft.readerPath]; }
+  function setReaderPath(draftId, path) {
+    const draft=requireDraftOwner(draftId);
+    const validIds=new Set(draft.objects.map((entry)=>entry.id));
+    draft.readerPath=[...path].filter((id,index,array)=>validIds.has(id) && array.indexOf(id)===index);
+    draft.updatedAt=Date.now(); emit(); return [...draft.readerPath];
+  }
+
   function publishDraft(draftId) {
     if (!canPublish()) throw new Error('Sign in to publish.');
-    const draft = state.drafts.find((entry) => entry.id === draftId); if (!draft) throw new Error('Draft not found.');
+    const draft=requireDraftOwner(draftId);
     applyDraftEvidence(draft);
-    const spaceId = uid('space');
     const publicationEvidence = derivePublicationEvidence(draft.objects);
     const claimAssessments=draft.objects.filter((o)=>o.type==='claim').map((o)=>({claimId:o.id,state:o.evidenceState,confidence:o.evidenceAssessment?.confidence||0}));
+    const existing=draft.editingPublicationId ? publicationById(draft.editingPublicationId) : null;
+    if(draft.editingPublicationId && (!existing || existing.creatorId!==state.account.id)) throw new Error('You can only edit knowledge you created.');
+    const spaceId=existing?.id || uid('space');
+    const now=Date.now();
     const publication = {
-      id:spaceId,type:'publication',title:draft.title,subtitle:draft.subtitle,summary:draft.summary,creatorId:state.account.id,
+      ...(existing||{}),
+      id:spaceId,type:'publication',title:draft.title,subtitle:draft.subtitle,summary:draft.summary,thumbnail:validateThumbnail(draft.thumbnail),creatorId:state.account.id,
       topicIds:draft.topicId?[draft.topicId]:[],format:'knowledge-space',evidenceState:publicationEvidence,
       evidenceAssessment:{method:'libre-auto-v2',frameworkVersion:2,derivedFromClaims:true,claimAssessments,sourceDiscovery:draft.sourceDiscovery||null},
       sourceCount:draft.objects.filter((o)=>['source','document','dataset'].includes(o.type)).length,
       claimCount:draft.objects.filter((o)=>o.type==='claim').length,
-      readMinutes:Math.max(3, Math.ceil(draft.objects.length*1.5)),createdAt:Date.now(),updatedAt:Date.now(),popularity:1,depth:70,
-      readerPath:draft.readerPath,forkedFrom:draft.forkedFrom,sourceDiscovery:draft.sourceDiscovery||null
+      readMinutes:Math.max(3, Math.ceil(draft.objects.length*1.5)),createdAt:existing?.createdAt||now,updatedAt:now,popularity:existing?.popularity||1,depth:existing?.depth||70,
+      readerPath:[...draft.readerPath],forkedFrom:draft.forkedFrom,sourceDiscovery:draft.sourceDiscovery||null,
+      objectIds:draft.objects.map((object)=>object.id),revision:(existing?.revision||0)+1
     };
-    state.graph.objects.push(publication, ...draft.objects);
-    state.graph.relations.push(...draft.relations, ...draft.readerPath.map((objectId, index)=>({id:uid('relation'),fromId:spaceId,toId:objectId,type:'part_of',order:index})));
-    if (draft.forkedFrom) state.graph.relations.push({id:uid('relation'),fromId:spaceId,toId:draft.forkedFrom,type:'forked_from'});
+
+    if(existing) {
+      const oldIds=new Set(draft.originalObjectIds?.length?draft.originalObjectIds:publicationObjectIds(existing));
+      const currentIds=new Set(publication.objectIds);
+      const otherPublications=state.graph.objects.filter((object)=>object.type==='publication' && object.id!==spaceId);
+      state.graph.objects=state.graph.objects.filter((object)=>{
+        if(object.id===spaceId) return false;
+        if(!oldIds.has(object.id) || currentIds.has(object.id)) return true;
+        return otherPublications.some((other)=>Array.isArray(other.objectIds) && other.objectIds.includes(object.id));
+      });
+      state.graph.relations=state.graph.relations.filter((relation)=>{
+        if(relation.spaceId===spaceId) return false;
+        if(relation.fromId===spaceId && ['part_of','forked_from'].includes(relation.type)) return false;
+        if(oldIds.has(relation.fromId) && oldIds.has(relation.toId)) return false;
+        return true;
+      });
+    }
+
+    for(const object of draft.objects) {
+      const index=state.graph.objects.findIndex((entry)=>entry.id===object.id);
+      if(index>=0) state.graph.objects[index]=structuredClone(object);
+      else state.graph.objects.push(structuredClone(object));
+    }
+    state.graph.objects.push(publication);
+    state.graph.relations.push(...draft.relations.map((relation)=>({...relation,spaceId})), ...draft.readerPath.map((objectId, index)=>({id:uid('relation'),fromId:spaceId,toId:objectId,type:'part_of',order:index,spaceId})));
+    if (draft.forkedFrom) state.graph.relations.push({id:uid('relation'),fromId:spaceId,toId:draft.forkedFrom,type:'forked_from',spaceId});
     state.drafts = state.drafts.filter((entry)=>entry.id!==draftId); emit(); return structuredClone(publication);
   }
 
@@ -220,5 +368,5 @@ export function createRepository({ storage = globalThis.localStorage } = {}) {
   function reset() { state=initialState(); emit(); }
   function subscribe(listener){ listeners.add(listener); return ()=>listeners.delete(listener); }
 
-  return { getState, subscribe, getAnonymousIdentity, addComment, listComments, voteComment, reportContent, saveObject, unsaveObject, followEntity, unfollowEntity, negativeFeedback, updateAlgorithm, addHistory, signUp, signIn, signOut, canPublish, createDraft, getDraft, updateDraft, addDraftObject, addDraftRelation, importDiscoveredSources, setReaderPath, publishDraft, createCollection, addToCollection, setTrailProgress, setTheme, reset };
+  return { getState, subscribe, getAnonymousIdentity, addComment, listComments, voteComment, reportContent, saveObject, unsaveObject, followEntity, unfollowEntity, negativeFeedback, updateAlgorithm, addHistory, signUp, signIn, signOut, canPublish, canEditPublication, createDraft, createEditDraft, getDraft, updateDraft, addDraftObject, updateDraftObject, removeDraftObject, addDraftRelation, importDiscoveredSources, setReaderPath, publishDraft, createCollection, addToCollection, setTrailProgress, setTheme, reset };
 }

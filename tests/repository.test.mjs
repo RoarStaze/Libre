@@ -66,3 +66,49 @@ test('forking preserves original reader-path object ids and lineage instead of d
   assert.deepEqual(draft.readerPath, source.readerPath);
   assert.equal(draft.objects.length, 0);
 });
+
+test('creators cannot set their own evidence classification', () => {
+  const repository = freshRepository();
+  repository.signUp({ email: 'evidence@libre.local', password: 'secret12', displayName: 'Evidence Tester' });
+  const draft = repository.createDraft({ title: 'Evidence Test' });
+  const claim = repository.addDraftObject(draft.id, {
+    type: 'claim',
+    title: 'A creator tries to self-label this as established',
+    evidenceState: 'established'
+  });
+  assert.equal(claim.evidenceState, 'unverified');
+});
+
+test('Libre recalculates claim evidence from supporting and contradicting source relationships', () => {
+  const repository = freshRepository();
+  repository.signUp({ email: 'auto@libre.local', password: 'secret12', displayName: 'Auto Classifier' });
+  const draft = repository.createDraft({ title: 'Automatic Evidence' });
+  const claim = repository.addDraftObject(draft.id, { type: 'claim', title: 'A testable claim' });
+  const source1 = repository.addDraftObject(draft.id, { type: 'source', title: 'Independent source one' });
+  const source2 = repository.addDraftObject(draft.id, { type: 'document', title: 'Primary document two' });
+  const source3 = repository.addDraftObject(draft.id, { type: 'source', title: 'Independent source three' });
+
+  repository.addDraftRelation(draft.id, { fromId: claim.id, toId: source1.id, type: 'supports' });
+  assert.equal(repository.getDraft(draft.id).objects.find((object) => object.id === claim.id).evidenceState, 'preliminary');
+
+  repository.addDraftRelation(draft.id, { fromId: claim.id, toId: source2.id, type: 'supports' });
+  repository.addDraftRelation(draft.id, { fromId: claim.id, toId: source3.id, type: 'supports' });
+  assert.equal(repository.getDraft(draft.id).objects.find((object) => object.id === claim.id).evidenceState, 'supported');
+
+  const counter = repository.addDraftObject(draft.id, { type: 'source', title: 'Counterevidence' });
+  repository.addDraftRelation(draft.id, { fromId: claim.id, toId: counter.id, type: 'contradicts' });
+  assert.equal(repository.getDraft(draft.id).objects.find((object) => object.id === claim.id).evidenceState, 'disputed');
+});
+
+test('publication evidence classification is derived from its claims at publish time', () => {
+  const repository = freshRepository();
+  repository.signUp({ email: 'publish@libre.local', password: 'secret12', displayName: 'Publisher' });
+  const draft = repository.createDraft({ title: 'Derived Publication State' });
+  const claim = repository.addDraftObject(draft.id, { type: 'claim', title: 'Contested claim' });
+  const support = repository.addDraftObject(draft.id, { type: 'source', title: 'Support' });
+  const counter = repository.addDraftObject(draft.id, { type: 'source', title: 'Counter' });
+  repository.addDraftRelation(draft.id, { fromId: claim.id, toId: support.id, type: 'supports' });
+  repository.addDraftRelation(draft.id, { fromId: claim.id, toId: counter.id, type: 'contradicts' });
+  const publication = repository.publishDraft(draft.id);
+  assert.equal(publication.evidenceState, 'disputed');
+});

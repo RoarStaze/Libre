@@ -1,7 +1,32 @@
 import { escapeHTML } from '../../shared/dom.js';
 
-export function libraryMarkup({ graph, state }) {
-  const ids=[...new Set([...state.library.saved,...state.library.readLater,...state.library.history])];
-  const items=ids.map((id)=>graph.objects.find((object)=>object.id===id)).filter(Boolean);
-  return `<section class="page"><div class="page-heading"><div><h1>Your library is a memory layer.</h1></div><p>Save individual claims, sources, documents, Spaces, Trails, or collections. The recommender can use those connections without hiding why.</p></div><div style="display:flex;gap:8px;overflow:auto;margin-bottom:28px"><button class="mode-chip" aria-selected="true">Saved</button><button class="mode-chip">Read Later</button><button class="mode-chip">History</button><button class="mode-chip">Collections</button></div>${items.length?`<div class="library-grid">${items.map((object)=>`<article class="library-item"><small style="color:var(--accent);text-transform:uppercase;letter-spacing:.08em">${escapeHTML(object.type.replaceAll('_',' '))}</small><h3>${escapeHTML(object.title)}</h3><p style="color:var(--muted);line-height:1.5">${escapeHTML(object.summary||object.subtitle||object.evidenceState||'Saved knowledge object')}</p><button class="quiet-button" data-open-object="${object.id}">Open</button></article>`).join('')}</div>`:'<div class="empty-state"><div><h2>Your library is empty</h2><p>Save any claim, source, Trail, document, or Space. Libre treats them all as reusable knowledge.</p><button class="primary-button" data-route="/">Explore The Stream</button></div></div>'}<div class="page-heading"><div><h1 style="font-size:clamp(2rem,4vw,3.4rem)">Collections</h1></div><button class="quiet-button" data-new-collection>+ New collection</button></div><div class="library-grid">${state.library.collections.map((collection)=>`<article class="library-item"><small style="color:var(--muted)">${escapeHTML(collection.visibility)}</small><h3>${escapeHTML(collection.title)}</h3><p style="color:var(--muted)">${collection.items.length} objects</p></article>`).join('')}</div></section>`;
+const views={
+  saved:{label:'Saved',description:'Knowledge you deliberately saved for later reference.'},
+  history:{label:'History',description:'Knowledge Spaces and objects you recently opened.'},
+  collections:{label:'Collections',description:'Your curated research sets and knowledge groupings.'}
+};
+
+function objectCards(items){
+  return items.length?`<div class="library-grid">${items.map((object)=>`<article class="library-item"><small class="library-object-type">${escapeHTML(object.type.replaceAll('_',' '))}</small><h3>${escapeHTML(object.title)}</h3><p>${escapeHTML(object.summary||object.subtitle||object.evidenceState||'Saved knowledge object')}</p><button class="quiet-button" data-open-object="${object.id}">Open</button></article>`).join('')}</div>`:`<div class="empty-state"><div><h2>Nothing here yet</h2><p>As you explore Libre, this view becomes a useful memory layer instead of another feed.</p><button class="primary-button" data-route="/">Explore The Stream</button></div></div>`;
+}
+
+function collectionCards(state){
+  const collections=state.library.collections||[];
+  return collections.length?`<div class="library-grid">${collections.map((collection)=>`<article class="library-item"><small class="library-object-type">${escapeHTML(collection.visibility)}</small><h3>${escapeHTML(collection.title)}</h3><p>${collection.items.length} connected object${collection.items.length===1?'':'s'}</p></article>`).join('')}</div>`:`<div class="empty-state"><div><h2>No collections yet</h2><p>Collections let you build curated research sets from any connected Knowledge Object.</p><button class="primary-button" data-new-collection>New collection</button></div></div>`;
+}
+
+export function libraryMarkup({ graph, state, view='saved' }) {
+  const active=views[view]?view:'saved';
+  const ids=active==='history'?[...(state.library.history||[])]:[...(state.library.saved||[])];
+  const items=[...new Set(ids)].map((id)=>graph.objects.find((object)=>object.id===id)).filter(Boolean);
+  const meta=views[active];
+
+  return `<section class="page library-page">
+    <div class="page-heading"><div><h1>Your library is a memory layer.</h1></div><p>${escapeHTML(meta.description)}</p></div>
+    <nav class="library-view-tabs" aria-label="Library views">
+      ${Object.entries(views).map(([id,item])=>`<button class="mode-chip" aria-selected="${active===id}" data-route="/library?view=${id}">${escapeHTML(item.label)}</button>`).join('')}
+    </nav>
+    ${active==='collections'?collectionCards(state):objectCards(items)}
+    ${active==='collections'?`<div class="library-collection-actions"><button class="quiet-button" data-new-collection>+ New collection</button></div>`:''}
+  </section>`;
 }

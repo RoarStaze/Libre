@@ -1,4 +1,5 @@
 import { createSeedGraph } from '../domain/seed.js';
+import { derivePublicationEvidence, recalculateDraftEvidence } from '../domain/evidence.js';
 
 const KEY = 'libre-continuum-state-v1';
 
@@ -42,6 +43,13 @@ export function createRepository({ storage = globalThis.localStorage } = {}) {
   const listeners = new Set();
   const getState = () => structuredClone(state);
   const emit = () => { persist(); for (const listener of listeners) listener(getState()); };
+
+  function applyDraftEvidence(draft) {
+    const assessed = recalculateDraftEvidence(draft);
+    draft.objects = assessed.objects;
+    draft.updatedAt = Date.now();
+    return draft;
+  }
 
   function getAnonymousIdentity() {
     if (!state.anonymous) {
@@ -100,14 +108,33 @@ export function createRepository({ storage = globalThis.localStorage } = {}) {
   }
   function getDraft(id) { const draft = state.drafts.find((entry) => entry.id === id); return draft ? structuredClone(draft) : null; }
   function updateDraft(id, patch) { const draft = state.drafts.find((entry) => entry.id === id); if (!draft) return null; Object.assign(draft, patch, {updatedAt:Date.now()}); emit(); return structuredClone(draft); }
-  function addDraftObject(draftId, object) { const draft = state.drafts.find((entry) => entry.id === draftId); if (!draft) throw new Error('Draft not found.'); const created = { id:uid(object.type || 'object'), evidenceState:'unverified', ...object }; draft.objects.push(created); draft.updatedAt=Date.now(); emit(); return structuredClone(created); }
-  function addDraftRelation(draftId, relation) { const draft = state.drafts.find((entry) => entry.id === draftId); if (!draft) throw new Error('Draft not found.'); const created={id:uid('relation'),...relation}; draft.relations.push(created); emit(); return structuredClone(created); }
+  function addDraftObject(draftId, object) {
+    const draft = state.drafts.find((entry) => entry.id === draftId);
+    if (!draft) throw new Error('Draft not found.');
+    const { evidenceState: _ignoredEvidenceState, evidenceAssessment: _ignoredAssessment, ...creatorFields } = object;
+    const created = { id:uid(object.type || 'object'), ...creatorFields };
+    draft.objects.push(created);
+    applyDraftEvidence(draft);
+    emit();
+    return structuredClone(draft.objects.find((entry) => entry.id === created.id));
+  }
+  function addDraftRelation(draftId, relation) {
+    const draft = state.drafts.find((entry) => entry.id === draftId);
+    if (!draft) throw new Error('Draft not found.');
+    const created={id:uid('relation'),...relation};
+    draft.relations.push(created);
+    applyDraftEvidence(draft);
+    emit();
+    return structuredClone(created);
+  }
   function setReaderPath(draftId, path) { const draft=state.drafts.find((entry)=>entry.id===draftId); if (!draft) throw new Error('Draft not found.'); draft.readerPath=[...path]; emit(); return [...draft.readerPath]; }
   function publishDraft(draftId) {
     if (!canPublish()) throw new Error('Sign in to publish.');
     const draft = state.drafts.find((entry) => entry.id === draftId); if (!draft) throw new Error('Draft not found.');
+    applyDraftEvidence(draft);
     const spaceId = uid('space');
-    const publication = { id:spaceId, type:'publication', title:draft.title, subtitle:draft.subtitle, summary:draft.summary, creatorId:state.account.id, topicIds:draft.topicId?[draft.topicId]:[], format:'knowledge-space', evidenceState:'unverified', sourceCount:draft.objects.filter((o)=>['source','document'].includes(o.type)).length, claimCount:draft.objects.filter((o)=>o.type==='claim').length, readMinutes:Math.max(3, Math.ceil(draft.objects.length*1.5)), createdAt:Date.now(), updatedAt:Date.now(), popularity:1, depth:70, readerPath:draft.readerPath, forkedFrom:draft.forkedFrom };
+    const publicationEvidence = derivePublicationEvidence(draft.objects);
+    const publication = { id:spaceId, type:'publication', title:draft.title, subtitle:draft.subtitle, summary:draft.summary, creatorId:state.account.id, topicIds:draft.topicId?[draft.topicId]:[], format:'knowledge-space', evidenceState:publicationEvidence, evidenceAssessment:{method:'libre-auto-v1',derivedFromClaims:true}, sourceCount:draft.objects.filter((o)=>['source','document'].includes(o.type)).length, claimCount:draft.objects.filter((o)=>o.type==='claim').length, readMinutes:Math.max(3, Math.ceil(draft.objects.length*1.5)), createdAt:Date.now(), updatedAt:Date.now(), popularity:1, depth:70, readerPath:draft.readerPath, forkedFrom:draft.forkedFrom };
     state.graph.objects.push(publication, ...draft.objects);
     state.graph.relations.push(...draft.relations, ...draft.readerPath.map((objectId, index)=>({id:uid('relation'),fromId:spaceId,toId:objectId,type:'part_of',order:index})));
     if (draft.forkedFrom) state.graph.relations.push({id:uid('relation'),fromId:spaceId,toId:draft.forkedFrom,type:'forked_from'});
